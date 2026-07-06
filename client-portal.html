@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Portal — Satish Designs</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0a0a0a; --ink-soft:#141414; --paper:#ffffff; --ivory:#faf9f6;
+    --gold:#c9a961; --gold-deep:#8b6f2e; --gold-bright:#e4c988;
+    --gray:#6b6b6b; --gray-light:#a3a3a3; --line: rgba(0,0,0,0.1);
+    --radius:16px; --ease: cubic-bezier(.16,.8,.24,1);
+    --ok:#1e8e5a; --warn:#b8860b; --bad:#c0392b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;background:var(--ivory);color:var(--ink);min-height:100vh;}
+  a{color:inherit;}
+  .serif{font-family:'Playfair Display',serif;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  header{background:var(--ink);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;}
+  .brand{display:flex;align-items:center;gap:10px;font-family:'Playfair Display',serif;font-weight:600;font-size:1.15rem;}
+  .brand .mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--gold-bright),var(--gold-deep));display:flex;align-items:center;justify-content:center;color:var(--ink);font-weight:700;font-size:.9rem;}
+  .hdr-right{display:flex;align-items:center;gap:16px;}
+  .bell{position:relative;cursor:pointer;font-size:1.3rem;}
+  .bell .dot{position:absolute;top:-4px;right:-4px;background:var(--bad);color:#fff;font-size:.65rem;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-weight:700;}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:999px;font-size:.85rem;font-weight:600;cursor:pointer;border:1px solid transparent;transition:.25s var(--ease);}
+  .btn-gold{background:linear-gradient(135deg,var(--gold-bright),var(--gold));color:var(--ink);}
+  .btn-gold:hover{transform:translateY(-1px);box-shadow:0 10px 22px -8px rgba(201,169,97,.6);}
+  .btn-ghost{border-color:rgba(255,255,255,.4);color:#fff;background:transparent;}
+  .btn-ghost:hover{background:#fff;color:var(--ink);}
+  .btn-dark{background:var(--ink);color:#fff;}
+  .btn-outline{border-color:var(--line);color:var(--ink);background:#fff;}
+  .btn-outline:hover{border-color:var(--gold-deep);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  /* ---------- LOGIN ---------- */
+  .login-wrap{min-height:calc(100vh - 65px);display:flex;align-items:center;justify-content:center;padding:24px;}
+  .login-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:40px 36px;max-width:420px;width:100%;box-shadow:0 20px 50px -20px rgba(0,0,0,.15);}
+  .login-card h1{font-size:1.5rem;margin-bottom:6px;}
+  .login-card p{color:var(--gray);font-size:.92rem;margin-bottom:24px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:.8rem;font-weight:600;margin-bottom:6px;color:var(--gray);}
+  .field input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:.95rem;font-family:inherit;}
+  .field input:focus{outline:none;border-color:var(--gold-deep);}
+  .msg{font-size:.85rem;padding:10px 14px;border-radius:10px;margin-bottom:16px;display:none;}
+  .msg.show{display:block;}
+  .msg.ok{background:#e8f5ee;color:var(--ok);}
+  .msg.err{background:#fdecea;color:var(--bad);}
+
+  /* ---------- LAYOUT ---------- */
+  .app{display:none;}
+  .app.show{display:block;}
+  .container{max-width:1100px;margin:0 auto;padding:28px 20px 80px;}
+  .tabs{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;}
+  .tab{padding:9px 18px;border-radius:999px;font-size:.85rem;font-weight:600;cursor:pointer;background:#fff;border:1px solid var(--line);}
+  .tab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* order cards */
+  .order-list{display:grid;gap:14px;}
+  .order-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;cursor:pointer;transition:.2s var(--ease);}
+  .order-card:hover{border-color:var(--gold-deep);transform:translateY(-2px);}
+  .order-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .order-card h3{font-size:1.05rem;}
+  .order-id{color:var(--gray);font-size:.78rem;}
+  .badge{display:inline-block;padding:4px 12px;border-radius:999px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em;}
+  .badge-status{background:#f0ece0;color:var(--gold-deep);}
+  .badge-pay-pending{background:#fdf3e0;color:var(--warn);}
+  .badge-pay-paid{background:#e8f5ee;color:var(--ok);}
+  .badge-pay-refunded{background:#fdecea;color:var(--bad);}
+  .progress-bar-wrap{margin-top:14px;background:#eee;border-radius:999px;height:10px;overflow:hidden;}
+  .progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold-bright),var(--gold-deep));border-radius:999px;transition:width .5s var(--ease);}
+  .progress-label{display:flex;justify-content:space-between;font-size:.75rem;color:var(--gray);margin-top:6px;}
+  .empty{text-align:center;padding:60px 20px;color:var(--gray);}
+  .empty .icon{font-size:2.5rem;margin-bottom:10px;}
+
+  /* order detail */
+  .detail-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:18px;}
+  .back-link{font-size:.85rem;font-weight:600;cursor:pointer;color:var(--gray);margin-bottom:14px;display:inline-block;}
+  .back-link:hover{color:var(--ink);}
+  .grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;}
+  @media(max-width:800px){.grid2{grid-template-columns:1fr;}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:18px;}
+  .card h4{font-size:.95rem;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .countdown{display:flex;gap:10px;margin:10px 0;}
+  .countdown div{background:var(--ink);color:#fff;border-radius:10px;padding:10px 14px;text-align:center;min-width:60px;}
+  .countdown .num{font-size:1.3rem;font-weight:700;font-family:'JetBrains Mono',monospace;}
+  .countdown .unit{font-size:.65rem;color:var(--gray-light);text-transform:uppercase;}
+  .status-flow{display:flex;flex-direction:column;gap:0;margin-top:6px;}
+  .status-step{display:flex;gap:12px;align-items:flex-start;padding:8px 0;position:relative;}
+  .status-step .dot{width:14px;height:14px;border-radius:50%;background:#ddd;flex-shrink:0;margin-top:3px;position:relative;z-index:1;}
+  .status-step.done .dot{background:var(--gold-deep);}
+  .status-step.current .dot{background:var(--gold-bright);box-shadow:0 0 0 4px rgba(201,169,97,.3);}
+  .status-step::before{content:'';position:absolute;left:6.5px;top:20px;bottom:-8px;width:1px;background:var(--line);}
+  .status-step:last-child::before{display:none;}
+  .status-step .label{font-size:.88rem;font-weight:500;}
+  .status-step.done .label, .status-step.current .label{font-weight:700;}
+  .status-step .time{font-size:.72rem;color:var(--gray);}
+
+  .file-box{border:1px dashed var(--line);border-radius:12px;padding:16px;text-align:center;}
+  .file-box img{max-width:100%;border-radius:8px;margin-bottom:10px;}
+  .file-actions{display:flex;gap:8px;justify-content:center;margin-top:10px;}
+
+  .rev-item{border-left:2px solid var(--gold-deep);padding:8px 0 8px 14px;margin-bottom:10px;}
+  .rev-item .rev-status{font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--gold-deep);}
+  .rev-item p{font-size:.88rem;margin-top:3px;}
+  .rev-item .time{font-size:.72rem;color:var(--gray);}
+  textarea, input.chat-input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:.9rem;}
+  textarea{resize:vertical;min-height:70px;margin-bottom:10px;}
+
+  .chat-box{height:320px;overflow-y:auto;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;background:var(--ivory);}
+  .chat-msg{max-width:75%;padding:9px 13px;border-radius:14px;font-size:.87rem;line-height:1.4;}
+  .chat-msg.me{align-self:flex-end;background:var(--ink);color:#fff;border-bottom-right-radius:4px;}
+  .chat-msg.them{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px;}
+  .chat-msg .time{display:block;font-size:.65rem;opacity:.6;margin-top:4px;}
+  .chat-row{display:flex;gap:8px;}
+
+  .notif-list{max-height:400px;overflow-y:auto;}
+  .notif-item{padding:12px 16px;border-bottom:1px solid var(--line);font-size:.86rem;cursor:pointer;}
+  .notif-item.unread{background:#fdf8ee;}
+  .notif-item .time{display:block;font-size:.72rem;color:var(--gray);margin-top:3px;}
+  .notif-panel{position:fixed;top:65px;right:20px;width:340px;max-width:92vw;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 50px -15px rgba(0,0,0,.25);z-index:200;display:none;}
+  .notif-panel.show{display:block;}
+  .notif-panel-hdr{padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:.9rem;display:flex;justify-content:space-between;}
+  .notif-panel-hdr span{font-size:.78rem;font-weight:600;color:var(--gold-deep);cursor:pointer;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:300;padding:20px;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:#fff;border-radius:16px;padding:28px;max-width:420px;width:100%;}
+  .modal h3{margin-bottom:14px;}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:999px;font-size:.85rem;z-index:400;display:none;}
+  .toast.show{display:block;}
+  .loader{text-align:center;padding:60px;color:var(--gray);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><div class="mark">SD</div> Client Portal</div>
+  <div class="hdr-right" id="hdrRight" style="display:none;">
+    <div class="bell" id="bellBtn">🔔<span class="dot" id="notifDot" style="display:none;">0</span></div>
+    <button class="btn btn-ghost" id="logoutBtn">Log Out</button>
+  </div>
+</header>
+
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-panel-hdr">Notifications <span id="markAllRead">Mark all read</span></div>
+  <div class="notif-list" id="notifList"></div>
+</div>
+
+<!-- ================= LOGIN ================= -->
+<div class="login-wrap" id="loginView">
+  <div class="login-card">
+    <h1 class="serif">Welcome back</h1>
+    <p>Sign in with a magic link — no password needed. Enter your email and we'll send you a secure sign-in link.</p>
+    <div class="msg" id="loginMsg"></div>
+    <div class="field">
+      <label>Email address</label>
+      <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <button class="btn btn-gold" id="sendLinkBtn" style="width:100%;justify-content:center;">Send Magic Link</button>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div class="app" id="appView">
+  <div class="container">
+
+    <!-- ORDER LIST -->
+    <div class="view active" id="listView">
+      <h1 class="serif" style="margin-bottom:4px;">My Orders</h1>
+      <p style="color:var(--gray);margin-bottom:22px;">Track progress, chat with Satish, and download your files.</p>
+      <div class="order-list" id="orderList"><div class="loader">Loading your orders…</div></div>
+    </div>
+
+    <!-- ORDER DETAIL -->
+    <div class="view" id="detailView">
+      <span class="back-link" id="backToList">← Back to all orders</span>
+      <div class="detail-header">
+        <div>
+          <h2 class="serif" id="dProjectName">Project</h2>
+          <div class="order-id mono" id="dOrderId">#ORDER</div>
+        </div>
+        <div style="text-align:right;">
+          <span class="badge badge-status" id="dPaymentBadge">Payment Pending</span>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <h4>⏱ Delivery Countdown</h4>
+            <div class="countdown" id="dCountdown">
+              <div><div class="num">--</div><div class="unit">Days</div></div>
+              <div><div class="num">--</div><div class="unit">Hrs</div></div>
+              <div><div class="num">--</div><div class="unit">Min</div></div>
+              <div><div class="num">--</div><div class="unit">Sec</div></div>
+            </div>
+            <div style="font-size:.8rem;color:var(--gray);" id="dDeliveryText"></div>
+          </div>
+
+          <div class="card">
+            <h4>📊 Live Progress</h4>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="dProgressFill" style="width:0%;"></div></div>
+            <div class="progress-label"><span id="dProgressLabel">Order Received</span><span id="dProgressPct">10%</span></div>
+            <div class="status-flow" id="dStatusFlow" style="margin-top:20px;"></div>
+          </div>
+
+          <div class="card">
+            <h4>📁 Final Delivery File</h4>
+            <div id="dFileBox"><div class="empty" style="padding:24px;"><div class="icon">🖼️</div>No file uploaded yet.</div></div>
+          </div>
+
+          <div class="card" id="payCard" style="display:none;">
+            <h4>💳 Complete Payment</h4>
+            <p style="font-size:.85rem;color:var(--gray);margin-bottom:12px;">Pay securely with PayPal. Your dashboard updates to "Paid" automatically the instant payment is confirmed — no need to message me.</p>
+            <div id="paypal-button-container"></div>
+          </div>
+
+          <div class="card">
+            <h4>🔁 Revisions</h4>
+            <div id="dRevisions"></div>
+            <textarea id="revInput" placeholder="Describe the changes you'd like…"></textarea>
+            <button class="btn btn-dark" id="submitRevBtn">Request Revision</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h4>💬 Order Chat</h4>
+            <div class="chat-box" id="chatBox"></div>
+            <div class="chat-row">
+              <input type="text" class="chat-input" id="chatInput" placeholder="Type a message…">
+              <button class="btn btn-dark" id="sendChatBtn">Send</button>
+            </div>
+          </div>
+          <div class="card">
+            <h4>ℹ️ Order Info</h4>
+            <p style="font-size:.85rem;color:var(--gray);margin-bottom:6px;"><b>Order Date:</b> <span id="dOrderDate"></span></p>
+            <p style="font-size:.85rem;color:var(--gray);margin-bottom:6px;"><b>Price:</b> <span id="dPrice"></span></p>
+            <p style="font-size:.85rem;color:var(--gray);"><b>Brief:</b> <span id="dBrief"></span></p>
+            <button class="btn btn-outline" id="reorderBtn" style="width:100%;justify-content:center;margin-top:14px;">Re-order this project</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   CONFIG — paste your free Supabase project details here
+   ===================================================================== */
+const SUPABASE_URL = "https://stxwyoocoeitkwqgdmew.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0eHd5b29jb2VpdGt3cWdkbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzMzE0OTksImV4cCI6MjA5ODkwNzQ5OX0.0Ld1EAjMbexajzElTnstsDOOPh1wRbMrpZ8XGOWb-2o";
+const PAYPAL_CLIENT_ID = "YOUR_PAYPAL_CLIENT_ID"; // free PayPal developer app, see SETUP-GUIDE.md
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const STATUS_STEPS = ["Order Received","Brief Reviewed","Design Started","First Draft Ready","Revision","Final Delivery","Completed"];
+const STATUS_PCT = {"Order Received":10,"Brief Reviewed":25,"Design Started":40,"First Draft Ready":60,"Revision":75,"Final Delivery":90,"Completed":100};
+
+let currentUser = null;
+let currentProfile = null;
+let currentOrderId = null;
+let chatChannel = null;
+let ordersChannel = null;
+let notifChannel = null;
+let countdownTimer = null;
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+function fmtDate(d){ return d ? new Date(d).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}) : '—'; }
+
+/* ---------------- AUTH ---------------- */
+document.getElementById('sendLinkBtn').addEventListener('click', async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const msgEl = document.getElementById('loginMsg');
+  msgEl.className = 'msg';
+  if(!email){ msgEl.textContent = 'Please enter your email.'; msgEl.classList.add('show','err'); return; }
+  document.getElementById('sendLinkBtn').disabled = true;
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options:{ emailRedirectTo: window.location.href }
+  });
+  document.getElementById('sendLinkBtn').disabled = false;
+  if(error){ msgEl.textContent = error.message; msgEl.classList.add('show','err'); }
+  else { msgEl.textContent = '✅ Magic link sent! Check your email and click the link to sign in.'; msgEl.classList.add('show','ok'); }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await sb.auth.signOut();
+  window.location.reload();
+});
+
+sb.auth.onAuthStateChange((event, session) => {
+  if(session){ initApp(session); }
+});
+
+async function initApp(session){
+  currentUser = session.user;
+  let { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = profile;
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('appView').classList.add('show');
+  document.getElementById('hdrRight').style.display = 'flex';
+  loadOrders();
+  loadNotifications();
+  subscribeRealtime();
+}
+
+/* ---------------- ORDERS LIST ---------------- */
+async function loadOrders(){
+  const { data: orders, error } = await sb.from('orders').select('*').eq('client_id', currentUser.id).order('created_at',{ascending:false});
+  const listEl = document.getElementById('orderList');
+  if(error){ listEl.innerHTML = `<div class="empty">Error loading orders.</div>`; return; }
+  if(!orders || orders.length === 0){
+    listEl.innerHTML = `<div class="empty"><div class="icon">📦</div>No orders yet. Once Satish creates your first order, it'll appear here automatically.</div>`;
+    return;
+  }
+  listEl.innerHTML = orders.map(o => orderCardHtml(o)).join('');
+  listEl.querySelectorAll('.order-card').forEach(card => {
+    card.addEventListener('click', () => openOrder(card.dataset.id));
+  });
+}
+
+function orderCardHtml(o){
+  const payClass = o.payment_status === 'Paid' ? 'badge-pay-paid' : (o.payment_status === 'Refunded' ? 'badge-pay-refunded' : 'badge-pay-pending');
+  const pct = o.progress_percent ?? STATUS_PCT[o.status] ?? 10;
+  return `
+    <div class="order-card" data-id="${o.id}">
+      <div class="order-card-top">
+        <div>
+          <h3>${escapeHtml(o.project_name)}</h3>
+          <div class="order-id mono">${escapeHtml(o.order_number)} · ${fmtDate(o.order_date)}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <span class="badge badge-status">${escapeHtml(o.status)}</span>
+          <span class="badge ${payClass}">${escapeHtml(o.payment_status)}</span>
+        </div>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%;"></div></div>
+      <div class="progress-label"><span>Delivery: ${fmtDate(o.delivery_date)}</span><span>${pct}%</span></div>
+    </div>`;
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+document.getElementById('backToList').addEventListener('click', () => {
+  document.getElementById('detailView').classList.remove('active');
+  document.getElementById('listView').classList.add('active');
+  if(countdownTimer) clearInterval(countdownTimer);
+  if(chatChannel) sb.removeChannel(chatChannel);
+  loadOrders();
+});
+
+/* ---------------- ORDER DETAIL ---------------- */
+async function openOrder(orderId){
+  currentOrderId = orderId;
+  const { data: o } = await sb.from('orders').select('*').eq('id', orderId).single();
+  if(!o) return;
+  document.getElementById('listView').classList.remove('active');
+  document.getElementById('detailView').classList.add('active');
+
+  document.getElementById('dProjectName').textContent = o.project_name;
+  document.getElementById('dOrderId').textContent = o.order_number;
+  document.getElementById('dOrderDate').textContent = fmtDate(o.order_date);
+  document.getElementById('dPrice').textContent = o.price ? ('$' + o.price) : '—';
+  document.getElementById('dBrief').textContent = o.brief || '—';
+  document.getElementById('dDeliveryText').textContent = 'Expected: ' + fmtDate(o.delivery_date);
+
+  const payBadge = document.getElementById('dPaymentBadge');
+  payBadge.textContent = o.payment_status;
+  payBadge.className = 'badge ' + (o.payment_status === 'Paid' ? 'badge-pay-paid' : (o.payment_status === 'Refunded' ? 'badge-pay-refunded' : 'badge-pay-pending'));
+
+  renderProgress(o);
+  startCountdown(o.delivery_date);
+  loadFiles(orderId);
+  loadRevisions(orderId);
+  loadChat(orderId);
+  subscribeOrderChat(orderId);
+  setupPayment(o);
+
+  document.getElementById('reorderBtn').onclick = () => {
+    toast('Reorder request noted — Satish will follow up by email to confirm details.');
+  };
+}
+
+/* ---------------- PAYMENT (PayPal, auto-confirmed via Edge Function) ---------------- */
+let paypalSdkLoaded = false;
+function loadPaypalSdk(callback){
+  if(paypalSdkLoaded){ callback(); return; }
+  const script = document.createElement('script');
+  script.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=USD`;
+  script.onload = () => { paypalSdkLoaded = true; callback(); };
+  document.head.appendChild(script);
+}
+function setupPayment(o){
+  const card = document.getElementById('payCard');
+  const container = document.getElementById('paypal-button-container');
+  if(o.payment_status !== 'Payment Pending' || !o.price || o.price <= 0 || PAYPAL_CLIENT_ID.startsWith('YOUR_')){
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  container.innerHTML = '';
+  loadPaypalSdk(() => {
+    paypal.Buttons({
+      style: { color: 'gold', shape: 'pill', label: 'pay' },
+      createOrder: (data, actions) => actions.order.create({
+        purchase_units: [{ amount: { value: String(o.price) }, custom_id: o.id }]
+      }),
+      onApprove: async (data, actions) => {
+        const details = await actions.order.capture();
+        // Ask our Edge Function to verify with PayPal server-side and mark the order Paid.
+        try {
+          const resp = await fetch(`${SUPABASE_URL}/functions/v1/confirm-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+            body: JSON.stringify({ order_id: o.id, paypal_order_id: data.orderID })
+          });
+          const result = await resp.json();
+          if(result.success){ toast('✅ Payment confirmed! Dashboard updated automatically.'); openOrder(o.id); }
+          else toast('Payment captured, but confirmation is pending — refresh in a moment.');
+        } catch(e){
+          toast('Payment captured! It may take a minute to reflect on your dashboard.');
+        }
+      },
+      onError: () => toast('Payment could not be completed. Please try again.')
+    }).render('#paypal-button-container');
+  });
+}
+
+function renderProgress(o){
+  const pct = o.progress_percent ?? STATUS_PCT[o.status] ?? 10;
+  document.getElementById('dProgressFill').style.width = pct + '%';
+  document.getElementById('dProgressLabel').textContent = o.status;
+  document.getElementById('dProgressPct').textContent = pct + '%';
+
+  const currentIdx = STATUS_STEPS.indexOf(o.status);
+  const flow = document.getElementById('dStatusFlow');
+  flow.innerHTML = STATUS_STEPS.map((s,i) => {
+    let cls = i < currentIdx ? 'done' : (i === currentIdx ? 'current' : '');
+    return `<div class="status-step ${cls}"><div class="dot"></div><div><div class="label">${s}</div></div></div>`;
+  }).join('');
+}
+
+function startCountdown(deliveryDate){
+  if(countdownTimer) clearInterval(countdownTimer);
+  if(!deliveryDate){ return; }
+  function tick(){
+    const diff = new Date(deliveryDate) - new Date();
+    const el = document.getElementById('dCountdown');
+    if(diff <= 0){
+      el.innerHTML = `<div style="grid-column:span 4;font-weight:700;color:var(--ok);">Delivery time reached ✅</div>`;
+      clearInterval(countdownTimer);
+      return;
+    }
+    const d = Math.floor(diff/(1000*60*60*24));
+    const h = Math.floor((diff/(1000*60*60))%24);
+    const m = Math.floor((diff/(1000*60))%60);
+    const s = Math.floor((diff/1000)%60);
+    el.innerHTML = `
+      <div><div class="num">${d}</div><div class="unit">Days</div></div>
+      <div><div class="num">${h}</div><div class="unit">Hrs</div></div>
+      <div><div class="num">${m}</div><div class="unit">Min</div></div>
+      <div><div class="num">${s}</div><div class="unit">Sec</div></div>`;
+  }
+  tick();
+  countdownTimer = setInterval(tick, 1000);
+}
+
+/* ---------------- FILES ---------------- */
+async function loadFiles(orderId){
+  const { data: files } = await sb.from('order_files').select('*').eq('order_id', orderId).order('uploaded_at',{ascending:false});
+  const box = document.getElementById('dFileBox');
+  if(!files || files.length === 0){
+    box.innerHTML = `<div class="empty" style="padding:24px;"><div class="icon">🖼️</div>No file uploaded yet.</div>`;
+    return;
+  }
+  box.innerHTML = files.map(f => `
+    <div class="file-box" style="margin-bottom:10px;">
+      <img src="${f.file_url}" alt="${escapeHtml(f.file_name)}">
+      <div style="font-size:.8rem;color:var(--gray);">${escapeHtml(f.file_name)} · ${fmtDate(f.uploaded_at)}</div>
+      <div class="file-actions">
+        <a href="${f.file_url}" target="_blank" class="btn btn-outline btn-sm">Preview</a>
+        <a href="${f.file_url}" download="${escapeHtml(f.file_name)}" class="btn btn-dark btn-sm">Download</a>
+      </div>
+    </div>`).join('');
+}
+
+/* ---------------- REVISIONS ---------------- */
+async function loadRevisions(orderId){
+  const { data: revs } = await sb.from('revisions').select('*').eq('order_id', orderId).order('requested_at',{ascending:false});
+  const el = document.getElementById('dRevisions');
+  if(!revs || revs.length === 0){ el.innerHTML = `<p style="font-size:.85rem;color:var(--gray);">No revisions requested yet.</p>`; return; }
+  el.innerHTML = revs.map(r => `
+    <div class="rev-item">
+      <div class="rev-status">${r.status}</div>
+      <p>${escapeHtml(r.message)}</p>
+      <div class="time">${fmtDate(r.requested_at)}</div>
+    </div>`).join('');
+}
+
+document.getElementById('submitRevBtn').addEventListener('click', async () => {
+  const input = document.getElementById('revInput');
+  const message = input.value.trim();
+  if(!message) return;
+  const { error } = await sb.from('revisions').insert({ order_id: currentOrderId, client_id: currentUser.id, message });
+  if(error){ toast('Error: ' + error.message); return; }
+  input.value = '';
+  toast('Revision request sent!');
+  loadRevisions(currentOrderId);
+});
+
+/* ---------------- CHAT ---------------- */
+async function loadChat(orderId){
+  const { data: msgs } = await sb.from('messages').select('*').eq('order_id', orderId).order('created_at',{ascending:true});
+  renderChat(msgs || []);
+}
+function renderChat(msgs){
+  const box = document.getElementById('chatBox');
+  box.innerHTML = msgs.map(m => `
+    <div class="chat-msg ${m.sender_id === currentUser.id ? 'me':'them'}">
+      ${escapeHtml(m.message)}
+      <span class="time">${fmtDate(m.created_at)}</span>
+    </div>`).join('');
+  box.scrollTop = box.scrollHeight;
+}
+document.getElementById('sendChatBtn').addEventListener('click', sendChat);
+document.getElementById('chatInput').addEventListener('keydown', e => { if(e.key === 'Enter') sendChat(); });
+async function sendChat(){
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  if(!message || !currentOrderId) return;
+  input.value = '';
+  const { error } = await sb.from('messages').insert({ order_id: currentOrderId, sender_id: currentUser.id, sender_role: 'client', message });
+  if(error) toast('Error sending message: ' + error.message);
+}
+function subscribeOrderChat(orderId){
+  if(chatChannel) sb.removeChannel(chatChannel);
+  chatChannel = sb.channel('chat-'+orderId)
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages', filter:`order_id=eq.${orderId}` }, () => loadChat(orderId))
+    .on('postgres_changes', { event:'*', schema:'public', table:'orders', filter:`id=eq.${orderId}` }, payload => { renderProgress(payload.new); startCountdown(payload.new.delivery_date); })
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'order_files', filter:`order_id=eq.${orderId}` }, () => loadFiles(orderId))
+    .on('postgres_changes', { event:'*', schema:'public', table:'revisions', filter:`order_id=eq.${orderId}` }, () => loadRevisions(orderId))
+    .subscribe();
+}
+
+/* ---------------- NOTIFICATIONS ---------------- */
+async function loadNotifications(){
+  const { data: notifs } = await sb.from('notifications').select('*').eq('user_id', currentUser.id).order('created_at',{ascending:false}).limit(30);
+  renderNotifications(notifs || []);
+}
+function renderNotifications(notifs){
+  const unread = notifs.filter(n => !n.is_read).length;
+  const dot = document.getElementById('notifDot');
+  if(unread > 0){ dot.style.display='flex'; dot.textContent = unread; } else { dot.style.display='none'; }
+  document.getElementById('notifList').innerHTML = notifs.length ? notifs.map(n => `
+    <div class="notif-item ${n.is_read?'':'unread'}" data-id="${n.id}">
+      ${escapeHtml(n.message)}
+      <span class="time">${fmtDate(n.created_at)}</span>
+    </div>`).join('') : `<div class="notif-item">No notifications yet.</div>`;
+}
+document.getElementById('bellBtn').addEventListener('click', () => {
+  document.getElementById('notifPanel').classList.toggle('show');
+});
+document.getElementById('markAllRead').addEventListener('click', async () => {
+  await sb.from('notifications').update({is_read:true}).eq('user_id', currentUser.id).eq('is_read', false);
+  loadNotifications();
+});
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('notifPanel');
+  const bell = document.getElementById('bellBtn');
+  if(panel.classList.contains('show') && !panel.contains(e.target) && !bell.contains(e.target)) panel.classList.remove('show');
+});
+
+function subscribeRealtime(){
+  ordersChannel = sb.channel('client-orders-'+currentUser.id)
+    .on('postgres_changes', { event:'*', schema:'public', table:'orders', filter:`client_id=eq.${currentUser.id}` }, () => {
+      if(document.getElementById('listView').classList.contains('active')) loadOrders();
+    })
+    .subscribe();
+  notifChannel = sb.channel('client-notifs-'+currentUser.id)
+    .on('postgres_changes', { event:'*', schema:'public', table:'notifications', filter:`user_id=eq.${currentUser.id}` }, () => loadNotifications())
+    .subscribe();
+}
+
+/* ---------------- BOOTSTRAP ---------------- */
+(async function(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){ initApp(session); }
+})();
+</script>
+</body>
+</html>

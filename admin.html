@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — Satish Designs</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0a0a0a; --paper:#ffffff; --ivory:#faf9f6; --gold:#c9a961; --gold-deep:#8b6f2e; --gold-bright:#e4c988;
+    --gray:#6b6b6b; --line:rgba(0,0,0,.1); --ok:#1e8e5a; --warn:#b8860b; --bad:#c0392b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;background:var(--ivory);color:var(--ink);}
+  .serif{font-family:'Playfair Display',serif;}
+  header{background:var(--ink);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;}
+  .brand{font-family:'Playfair Display',serif;font-weight:700;font-size:1.15rem;}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;font-size:.82rem;font-weight:600;cursor:pointer;border:1px solid transparent;}
+  .btn-gold{background:linear-gradient(135deg,var(--gold-bright),var(--gold));color:var(--ink);}
+  .btn-ghost{border-color:rgba(255,255,255,.4);color:#fff;background:transparent;}
+  .btn-dark{background:var(--ink);color:#fff;}
+  .btn-outline{border:1px solid var(--line);background:#fff;}
+  .btn-sm{padding:6px 12px;font-size:.75rem;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .login-wrap{min-height:80vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .login-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:36px;max-width:400px;width:100%;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:.78rem;font-weight:600;color:var(--gray);margin-bottom:5px;}
+  .field input, .field select, .field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:.9rem;}
+  .msg{font-size:.85rem;padding:10px;border-radius:8px;margin-bottom:12px;display:none;}
+  .msg.show{display:block;}
+  .msg.ok{background:#e8f5ee;color:var(--ok);}
+  .msg.err{background:#fdecea;color:var(--bad);}
+  .app{display:none;}
+  .app.show{display:block;}
+  .container{max-width:1200px;margin:0 auto;padding:26px 20px 80px;}
+  .top-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;border:1px solid var(--line);}
+  th, td{padding:12px 14px;text-align:left;font-size:.85rem;border-bottom:1px solid var(--line);}
+  th{background:var(--ink);color:#fff;font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover{background:#faf7ee;cursor:pointer;}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.7rem;font-weight:700;}
+  .badge-pay-pending{background:#fdf3e0;color:var(--warn);}
+  .badge-pay-paid{background:#e8f5ee;color:var(--ok);}
+  .badge-pay-refunded{background:#fdecea;color:var(--bad);}
+  .badge-status{background:#f0ece0;color:var(--gold-deep);}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:300;padding:16px;overflow-y:auto;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:#fff;border-radius:16px;padding:26px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;}
+  .modal h3{margin-bottom:16px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:600px){.grid2{grid-template-columns:1fr;}}
+  .close-x{float:right;cursor:pointer;font-size:1.3rem;color:var(--gray);}
+  .section-title{font-weight:700;font-size:.85rem;margin:18px 0 8px;color:var(--gold-deep);}
+  .chat-box{height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--ivory);display:flex;flex-direction:column;gap:8px;}
+  .chat-msg{max-width:80%;padding:8px 12px;border-radius:12px;font-size:.83rem;}
+  .chat-msg.me{align-self:flex-end;background:var(--ink);color:#fff;}
+  .chat-msg.them{align-self:flex-start;background:#fff;border:1px solid var(--line);}
+  .rev-item{border-left:2px solid var(--gold-deep);padding:6px 0 6px 12px;margin-bottom:8px;font-size:.85rem;}
+  .rev-item .actions{margin-top:6px;display:flex;gap:6px;}
+  .file-thumb{max-width:100%;border-radius:8px;margin-bottom:8px;}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 22px;border-radius:999px;font-size:.85rem;z-index:400;display:none;}
+  .toast.show{display:block;}
+  .status-select{padding:6px 10px;border-radius:8px;border:1px solid var(--line);font-size:.8rem;}
+  .not-admin{text-align:center;padding:80px 20px;color:var(--gray);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">⚙ Admin Dashboard</div>
+  <div id="hdrRight" style="display:none;"><button class="btn btn-ghost" id="logoutBtn">Log Out</button></div>
+</header>
+
+<div class="login-wrap" id="loginView">
+  <div class="login-card">
+    <h2 class="serif" style="margin-bottom:6px;">Admin Sign In</h2>
+    <p style="color:var(--gray);font-size:.88rem;margin-bottom:20px;">Enter your admin email to receive a magic sign-in link.</p>
+    <div class="msg" id="loginMsg"></div>
+    <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="admin@example.com"></div>
+    <button class="btn btn-gold" id="sendLinkBtn" style="width:100%;justify-content:center;">Send Magic Link</button>
+  </div>
+</div>
+
+<div class="app" id="appView">
+  <div class="container">
+    <div class="top-row">
+      <h1 class="serif">All Orders</h1>
+      <button class="btn btn-gold" id="newOrderBtn">+ New Order</button>
+    </div>
+    <table>
+      <thead><tr><th>Order</th><th>Client</th><th>Status</th><th>Progress</th><th>Payment</th><th>Delivery</th></tr></thead>
+      <tbody id="ordersTbody"><tr><td colspan="6" style="text-align:center;padding:30px;">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- NEW ORDER MODAL -->
+<div class="modal-overlay" id="newOrderModal">
+  <div class="modal">
+    <span class="close-x" data-close="newOrderModal">&times;</span>
+    <h3>Create New Order</h3>
+    <div class="msg" id="newOrderMsg"></div>
+    <div class="field"><label>Client Email (must be a registered client)</label><input type="email" id="noClientEmail" placeholder="client@example.com"></div>
+    <div class="field"><label>Project Name</label><input type="text" id="noProjectName" placeholder="e.g. Gaming Channel Thumbnail Pack"></div>
+    <div class="grid2">
+      <div class="field"><label>Delivery Date & Time</label><input type="datetime-local" id="noDeliveryDate"></div>
+      <div class="field"><label>Price (USD)</label><input type="number" id="noPrice" placeholder="45"></div>
+    </div>
+    <div class="field"><label>Brief / Notes</label><textarea id="noBrief" rows="3" placeholder="Project brief details…"></textarea></div>
+    <button class="btn btn-dark" id="createOrderBtn" style="width:100%;justify-content:center;">Create Order</button>
+  </div>
+</div>
+
+<!-- ORDER DETAIL MODAL -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal">
+    <span class="close-x" data-close="orderModal">&times;</span>
+    <h3 id="omTitle">Order</h3>
+    <p style="font-size:.8rem;color:var(--gray);" id="omMeta"></p>
+
+    <div class="section-title">Status</div>
+    <select class="status-select" id="omStatus">
+      <option>Order Received</option><option>Brief Reviewed</option><option>Design Started</option>
+      <option>First Draft Ready</option><option>Revision</option><option>Final Delivery</option><option>Completed</option>
+    </select>
+    <button class="btn btn-outline btn-sm" id="omUpdateStatus" style="margin-left:8px;">Update</button>
+
+    <div class="section-title">Payment Status</div>
+    <select class="status-select" id="omPayment">
+      <option>Payment Pending</option><option>Paid</option><option>Refunded</option>
+    </select>
+    <button class="btn btn-outline btn-sm" id="omUpdatePayment" style="margin-left:8px;">Update</button>
+
+    <div class="section-title">Upload Final Thumbnail</div>
+    <input type="file" id="omFileInput" accept="image/*">
+    <button class="btn btn-dark btn-sm" id="omUploadBtn" style="margin-top:8px;">Upload</button>
+    <div id="omFiles" style="margin-top:10px;"></div>
+
+    <div class="section-title">Revision Requests</div>
+    <div id="omRevisions"></div>
+
+    <div class="section-title">Order Chat</div>
+    <div class="chat-box" id="omChat"></div>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="omChatInput" placeholder="Reply to client…" style="flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:10px;">
+      <button class="btn btn-dark btn-sm" id="omSendChat">Send</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* CONFIG — same Supabase project as client-portal.html */
+const SUPABASE_URL = "https://stxwyoocoeitkwqgdmew.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0eHd5b29jb2VpdGt3cWdkbWV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzMzE0OTksImV4cCI6MjA5ODkwNzQ5OX0.0Ld1EAjMbexajzElTnstsDOOPh1wRbMrpZ8XGOWb-2o";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const STATUS_PCT = {"Order Received":10,"Brief Reviewed":25,"Design Started":40,"First Draft Ready":60,"Revision":75,"Final Delivery":90,"Completed":100};
+let currentUser = null, currentOrderId = null, chatChannel = null;
+
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
+function fmtDate(d){ return d ? new Date(d).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}) : '—'; }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function genOrderNumber(){ return 'SD-' + Date.now().toString().slice(-8); }
+
+document.getElementById('sendLinkBtn').addEventListener('click', async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const msgEl = document.getElementById('loginMsg');
+  msgEl.className = 'msg';
+  if(!email){ msgEl.textContent='Enter your email.'; msgEl.classList.add('show','err'); return; }
+  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: window.location.href } });
+  if(error){ msgEl.textContent = error.message; msgEl.classList.add('show','err'); }
+  else { msgEl.textContent = '✅ Magic link sent — check your email.'; msgEl.classList.add('show','ok'); }
+});
+document.getElementById('logoutBtn').addEventListener('click', async () => { await sb.auth.signOut(); window.location.reload(); });
+
+sb.auth.onAuthStateChange((event, session) => { if(session) initAdmin(session); });
+
+async function initAdmin(session){
+  currentUser = session.user;
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  if(!profile || profile.role !== 'admin'){
+    document.getElementById('loginView').innerHTML = `<div class="not-admin"><h2>Access denied</h2><p>This account is not an admin. Ask the site owner to set your role to 'admin' in Supabase.</p></div>`;
+    return;
+  }
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('appView').classList.add('show');
+  document.getElementById('hdrRight').style.display = 'block';
+  loadOrders();
+  sb.channel('admin-orders').on('postgres_changes', { event:'*', schema:'public', table:'orders' }, loadOrders).subscribe();
+}
+
+async function loadOrders(){
+  const { data: orders } = await sb.from('orders').select('*, profiles!orders_client_id_fkey(email, full_name)').order('created_at',{ascending:false});
+  const tbody = document.getElementById('ordersTbody');
+  if(!orders || orders.length===0){ tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;">No orders yet. Click "+ New Order" to create one.</td></tr>`; return; }
+  tbody.innerHTML = orders.map(o => {
+    const payClass = o.payment_status==='Paid'?'badge-pay-paid':(o.payment_status==='Refunded'?'badge-pay-refunded':'badge-pay-pending');
+    return `<tr data-id="${o.id}">
+      <td><b>${escapeHtml(o.project_name)}</b><br><span class="mono" style="font-size:.75rem;color:var(--gray);">${escapeHtml(o.order_number)}</span></td>
+      <td>${escapeHtml(o.profiles?.email || '—')}</td>
+      <td><span class="badge badge-status">${escapeHtml(o.status)}</span></td>
+      <td>${o.progress_percent ?? STATUS_PCT[o.status] ?? 10}%</td>
+      <td><span class="badge ${payClass}">${escapeHtml(o.payment_status)}</span></td>
+      <td>${fmtDate(o.delivery_date)}</td>
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('tr[data-id]').forEach(row => row.addEventListener('click', () => openOrderModal(row.dataset.id)));
+}
+
+/* -------- NEW ORDER -------- */
+document.getElementById('newOrderBtn').addEventListener('click', () => document.getElementById('newOrderModal').classList.add('show'));
+document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', () => {
+  document.getElementById(el.dataset.close).classList.remove('show');
+  if(el.dataset.close === 'orderModal' && chatChannel){ sb.removeChannel(chatChannel); chatChannel = null; }
+}));
+
+document.getElementById('createOrderBtn').addEventListener('click', async () => {
+  const email = document.getElementById('noClientEmail').value.trim();
+  const project_name = document.getElementById('noProjectName').value.trim();
+  const delivery_date = document.getElementById('noDeliveryDate').value;
+  const price = parseFloat(document.getElementById('noPrice').value) || 0;
+  const brief = document.getElementById('noBrief').value.trim();
+  const msgEl = document.getElementById('newOrderMsg');
+  msgEl.className = 'msg';
+  if(!email || !project_name){ msgEl.textContent='Client email and project name are required.'; msgEl.classList.add('show','err'); return; }
+
+  const { data: clientProfile, error: findErr } = await sb.from('profiles').select('id').eq('email', email).maybeSingle();
+  if(findErr || !clientProfile){
+    msgEl.textContent = 'No registered client found with that email. Ask them to sign in to the Client Portal at least once first.';
+    msgEl.classList.add('show','err');
+    return;
+  }
+  const { error } = await sb.from('orders').insert({
+    order_number: genOrderNumber(),
+    client_id: clientProfile.id,
+    project_name,
+    delivery_date: delivery_date || null,
+    price,
+    brief,
+    status: 'Order Received',
+    progress_percent: 10,
+    payment_status: 'Payment Pending'
+  });
+  if(error){ msgEl.textContent = error.message; msgEl.classList.add('show','err'); return; }
+  msgEl.textContent = '✅ Order created!'; msgEl.classList.add('show','ok');
+  setTimeout(() => {
+    document.getElementById('newOrderModal').classList.remove('show');
+    document.getElementById('noClientEmail').value=''; document.getElementById('noProjectName').value='';
+    document.getElementById('noDeliveryDate').value=''; document.getElementById('noPrice').value=''; document.getElementById('noBrief').value='';
+    msgEl.classList.remove('show');
+    loadOrders();
+  }, 900);
+});
+
+/* -------- ORDER DETAIL MODAL -------- */
+async function openOrderModal(orderId){
+  currentOrderId = orderId;
+  const { data: o } = await sb.from('orders').select('*, profiles!orders_client_id_fkey(email)').eq('id', orderId).single();
+  document.getElementById('omTitle').textContent = o.project_name;
+  document.getElementById('omMeta').textContent = `${o.order_number} · ${o.profiles?.email || ''} · Ordered ${fmtDate(o.order_date)}`;
+  document.getElementById('omStatus').value = o.status;
+  document.getElementById('omPayment').value = o.payment_status;
+  document.getElementById('orderModal').classList.add('show');
+  loadOmFiles(orderId);
+  loadOmRevisions(orderId);
+  loadOmChat(orderId);
+  subscribeOmChat(orderId);
+}
+
+document.getElementById('omUpdateStatus').addEventListener('click', async () => {
+  const status = document.getElementById('omStatus').value;
+  const { error } = await sb.from('orders').update({ status, progress_percent: STATUS_PCT[status] }).eq('id', currentOrderId);
+  if(error) toast('Error: '+error.message); else toast('Status updated → ' + status);
+  loadOrders();
+});
+document.getElementById('omUpdatePayment').addEventListener('click', async () => {
+  const payment_status = document.getElementById('omPayment').value;
+  const { error } = await sb.from('orders').update({ payment_status }).eq('id', currentOrderId);
+  if(error) toast('Error: '+error.message); else toast('Payment status updated → ' + payment_status);
+  loadOrders();
+});
+
+async function loadOmFiles(orderId){
+  const { data: files } = await sb.from('order_files').select('*').eq('order_id', orderId).order('uploaded_at',{ascending:false});
+  const el = document.getElementById('omFiles');
+  el.innerHTML = (files||[]).map(f => `<div><img class="file-thumb" src="${f.file_url}"><div style="font-size:.78rem;color:var(--gray);">${escapeHtml(f.file_name)} · ${fmtDate(f.uploaded_at)}</div></div>`).join('') || '<p style="font-size:.82rem;color:var(--gray);">No files yet.</p>';
+}
+document.getElementById('omUploadBtn').addEventListener('click', async () => {
+  const fileInput = document.getElementById('omFileInput');
+  const file = fileInput.files[0];
+  if(!file){ toast('Choose a file first.'); return; }
+  const path = `${currentOrderId}/${Date.now()}_${file.name}`;
+  const { error: upErr } = await sb.storage.from('order-files').upload(path, file, { upsert: true });
+  if(upErr){ toast('Upload error: ' + upErr.message); return; }
+  const { data: pub } = sb.storage.from('order-files').getPublicUrl(path);
+  const { error } = await sb.from('order_files').insert({ order_id: currentOrderId, file_url: pub.publicUrl, file_name: file.name, uploaded_by: currentUser.id });
+  if(error) toast('Error saving file record: ' + error.message);
+  else { toast('File uploaded!'); fileInput.value=''; loadOmFiles(currentOrderId); }
+});
+
+async function loadOmRevisions(orderId){
+  const { data: revs } = await sb.from('revisions').select('*').eq('order_id', orderId).order('requested_at',{ascending:false});
+  const el = document.getElementById('omRevisions');
+  el.innerHTML = (revs||[]).map(r => `
+    <div class="rev-item">
+      <b>${r.status}</b> — ${escapeHtml(r.message)}
+      <div style="font-size:.72rem;color:var(--gray);">${fmtDate(r.requested_at)}</div>
+      ${r.status !== 'Completed' ? `<div class="actions">
+        <button class="btn btn-outline btn-sm" data-rev-approve="${r.id}">Approve</button>
+        <button class="btn btn-dark btn-sm" data-rev-complete="${r.id}">Mark Completed</button>
+      </div>` : ''}
+    </div>`).join('') || '<p style="font-size:.82rem;color:var(--gray);">No revision requests.</p>';
+  el.querySelectorAll('[data-rev-approve]').forEach(b => b.addEventListener('click', () => updateRevision(b.dataset.revApprove, 'Approved')));
+  el.querySelectorAll('[data-rev-complete]').forEach(b => b.addEventListener('click', () => updateRevision(b.dataset.revComplete, 'Completed')));
+}
+async function updateRevision(id, status){
+  const { error } = await sb.from('revisions').update({ status }).eq('id', id);
+  if(error) toast('Error: '+error.message); else { toast('Revision → ' + status); loadOmRevisions(currentOrderId); }
+}
+
+async function loadOmChat(orderId){
+  const { data: msgs } = await sb.from('messages').select('*').eq('order_id', orderId).order('created_at',{ascending:true});
+  renderOmChat(msgs||[]);
+}
+function renderOmChat(msgs){
+  const box = document.getElementById('omChat');
+  box.innerHTML = msgs.map(m => `<div class="chat-msg ${m.sender_role==='admin'?'me':'them'}">${escapeHtml(m.message)}</div>`).join('');
+  box.scrollTop = box.scrollHeight;
+}
+document.getElementById('omSendChat').addEventListener('click', async () => {
+  const input = document.getElementById('omChatInput');
+  const message = input.value.trim();
+  if(!message) return;
+  input.value = '';
+  const { error } = await sb.from('messages').insert({ order_id: currentOrderId, sender_id: currentUser.id, sender_role: 'admin', message });
+  if(error) toast('Error: ' + error.message);
+});
+function subscribeOmChat(orderId){
+  if(chatChannel) sb.removeChannel(chatChannel);
+  chatChannel = sb.channel('admin-chat-'+orderId)
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages', filter:`order_id=eq.${orderId}` }, () => loadOmChat(orderId))
+    .subscribe();
+}
+
+(async function(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) initAdmin(session);
+})();
+</script>
+</body>
+</html>
